@@ -57,9 +57,9 @@ void monoVO::cameraCallback(const sensor_msgs::ImageConstPtr msg)
   // positions/orientations are in pose, angular and linear velocity
   // estimates are in the twist data member.
   // covariances are also available (from the ekf)
-  double u = current_state_.twist.twist.linear.x;
-  double v = current_state_.twist.twist.linear.y;
-  double w = current_state_.twist.twist.linear.z;
+  double vx = current_state_.twist.twist.linear.x;
+  double vy = current_state_.twist.twist.linear.y;
+  double vz = current_state_.twist.twist.linear.z;
   double pd = current_state_.pose.pose.position.z;
   double phi = current_state_.pose.pose.orientation.x;
   double theta = current_state_.pose.pose.orientation.y;
@@ -86,7 +86,7 @@ void monoVO::cameraCallback(const sensor_msgs::ImageConstPtr msg)
                   0,  0,  1 );
   Mat N_c = R_b_to_c*R_v2_to_b*R_v1_to_v2*N_inertial; // rotate inertial into the camera frame
 
-  Mat velocity_b = (Mat_<double>(3,1) << u, v, w);
+//  Mat velocity_b = (Mat_<double>(3,1) << u, v, w);
 
   /*-------------------------------------------------------------------------------------
     ----------------------------------- Optical Flow ------------------------------------
@@ -100,7 +100,7 @@ void monoVO::cameraCallback(const sensor_msgs::ImageConstPtr msg)
                    -q,  p,  0 );
 
   Mat omega_hat_c = R_b_to_c*omega_hat_b;
-  Mat velocity_c = R_b_to_c*velocity_b;
+//  Mat velocity_c = R_b_to_c*velocity_b;
 
 
   // compute ground normal (w.r.t. camera frame) from gravity vector
@@ -123,54 +123,65 @@ void monoVO::cameraCallback(const sensor_msgs::ImageConstPtr msg)
 
   // compute optical flow after 2 sets of data is stored
   if (!prev_src_.empty()) {
+    cout << "src not empty" << endl;
     // run Lucas-Kanade to match features to previous frame
     vector<uchar> status; // stores inlier indicators
     vector<float> err; // only needed to run function, not used
     corners_LK_ = corners_; // use these for LK to not lose original corners
+    cout << " about to calc OF";
     calcOpticalFlowPyrLK( prev_src_, src, prev_corners_, corners_LK_, status, err, Size(LK_params_.win_size,LK_params_.win_size), LK_params_.win_level, TermCriteria(TermCriteria::COUNT+TermCriteria::EPS, LK_params_.iters, LK_params_.accuracy), 0, 1e-4 );
+    cout << " calculated OF";
 
-    // get matching features
+    // calculate velocity using known camera angle method (II.D)
+    double time = ros::Time::now().toSec();
+    double dt = time - prev_time;
+    prev_time = time;
+
+    cout << " calc velocity";
+    Mat A, B, x_hist, u_hist;
     vector<Point2f> cornersPrevGood, cornersGood;
     for (int i = 0; i < status.size(); i++) {
       int prev_x(prev_corners_[i].x), prev_y(prev_corners_[i].y);
       int new_x(corners_LK_[i].x), new_y(corners_LK_[i].y);
-      double diff = pow((prev_x-new_x)*(prev_x-new_x) + (prev_y-new_y)*(prev_y-new_y),0.5);
-      if ( status[i] && diff < 20) {
+      double diff_x = (new_x - prev_x)/dt;
+      double diff_y = (new_y - prev_y)/dt;
+      if ( status[i] && pow(diff_x*diff_x + diff_y*diff_y,0.5) < 20) {
         cornersPrevGood.push_back(prev_corners_[i]);
         cornersGood.push_back(corners_LK_[i]);
+        Mat x = (Mat_<double>(3,1) << corners_LK_[i].x, corners_LK_[i].y, 0);
+        Mat u = (Mat_<double>(3,1) << diff_x, diff_y, 0);
+        cout << "\n\n\n\n x = " << x << endl;
+        cout << "u = " << u << endl;
+        Mat a_i = createSkewSymm(x);
+        cout << "a_" << i << " = " << a_i << endl;
+        Mat b_i = createSkewSymm(x)*u;
+        cout << "top = " << b_i << endl;
+        cout << "bottom  =" << (N_c.t()*x) << endl;
+        cout << "b_" << i << " = " << b_i << endl;
+        A.push_back(a_i);
+        B.push_back(b_i);
+        x_hist.push_back(x);
+        u_hist.push_back(u);
       }
     }
-    // manually compute homography from truth
-    Mat H_true = omega_hat_c + 1/(-pd)*velocity_c*N_c.t();
 
-    // compute homography matrix
-    Mat mask; // just to run function but not actually needed/used
-    Mat H = findHomography(cornersPrevGood, cornersGood, CV_RANSAC, FH_params_.rancsace_reproj_threshold, mask, FH_params_.max_iters, FH_params_.confidence);
-    double time = ros::Time::now().toSec();
-    cout << "H = \n" << H << endl;
-    cout << "H_true = \n" << H_true << endl;
-    cout << "dx = " << current_state_.pose.pose.position.x - prev_x;
-    cout << " dy = " << current_state_.pose.pose.position.x - prev_x;
-    cout << " dt = " << time - prev_time << endl;
+    cout << "X = ... \n" << x_hist << endl;
+    cout << "U = ... \n" << u_hist << endl;
+    cout << "A = ... \n " << A << endl;
+    cout << "B = ... \n " << B << endl;
+    cout << "N = ... \n " << N_c << endl;
+
+    Mat v = A.inv(DECOMP_SVD)*B*(-pd);
+
+
+    cout << "v = \n" << v << endl;
+    cout << "vx = " << vx;
+    cout << " yy = " << vy;
+    cout << " dt = " << dt << endl;
     prev_x = current_state_.pose.pose.position.x;
     prev_y = current_state_.pose.pose.position.y;
-    prev_time = time;
 
     // remove angular velocity from homography
-    Mat H_no_omega = H - omega_hat_c;
-
-    // DO THIS IF NO GROUND NORMAL VECTOR ESTIMATE IS AVAILABLE
-    // decompose H_no_omega into velocity and normal components
-    if (no_normal_estimate_ == true) {
-      Mat Sigma, U, V, Vt;
-      SVD::compute(H_no_omega, Sigma, U, Vt);
-      N_ = (Mat_<double>(3,1) << Vt.at<double>(0,0), Vt.at<double>(0,1), Vt.at<double>(0,2))*(-1);
-    }
-
-    // compute estimated velocity vector
-    Mat v_over_d = H_no_omega*N_;
-    optical_flow_velocity_ = v_over_d*(-pd);
-
     Mat prev_src_color;
     cvtColor(prev_src_, prev_src_color, COLOR_GRAY2BGR);
 
@@ -221,6 +232,14 @@ void monoVO::estimateCallback(const nav_msgs::Odometry msg)
 void monoVO::publishVelocity()
 {
   velocity_pub_.publish(velocity_measurement_);
+}
+
+Mat monoVO::createSkewSymm(Mat x){
+  Mat out = (Mat_<double>(3,3) <<
+                   0, -x.at<float>(3,1),  x.at<float>(2,1),
+                   x.at<float>(3,1),  0, -x.at<float>(1,1),
+                   -x.at<float>(2,1),  x.at<float>(2,1),  0 );
+  return out;
 }
 
 } // namespace mono_vo

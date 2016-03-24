@@ -82,6 +82,7 @@ private:
   void cameraCallback(const sensor_msgs::ImageConstPtr msg);
   void estimateCallback(const nav_msgs::Odometry msg);
   void publishVelocity();
+  Mat  createSkewSymm(Mat x);
 };
 
 } // namespace ekf
