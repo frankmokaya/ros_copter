@@ -36,6 +36,17 @@ monoVO::monoVO() :
 
   optical_center_ = Point(320,240);
   focal_length_ = Point(205.46963709898583,  205.46963709898583);
+
+  I_ = (Mat_ <double>(3,3) <<
+        205.46963709898583, 0.0000000000,   320,
+        0.0000000000,   205.46963709898583, 240,
+        0.0000000000,   0.0000000000,   1.0000000000);
+  D_ = (Mat_ <double>(5,1) <<
+        0.0000000000,
+        0.0000000000,
+        0.0000000000,
+        0.0000000000,
+        0.0000000000);
   return;
 }
 
@@ -83,8 +94,11 @@ void monoVO::cameraCallback(const sensor_msgs::ImageConstPtr msg)
     goodFeaturesToTrack(src, points_[1], GFTT_params_.max_corners, 0.01, 10, Mat(), 3, 0, 0.04);
     cornerSubPix(src, points_[1], Size(11,11), Size(-1,-1),
         TermCriteria(TermCriteria::COUNT|TermCriteria::EPS,20,0.03));
+    undistortPoints(points_[1], undistorted_points_[1], I_, D_);
+    unNormalize(undistorted_points_[1], Size(640,480), optical_center_);
     initializing = false;
     prev_time = msg->header.stamp.toSec();
+    cout << "initialized" << endl;
   }else if(!points_[0].empty()){
     vector<uchar> status;
     vector<float> err;
@@ -132,73 +146,30 @@ void monoVO::cameraCallback(const sensor_msgs::ImageConstPtr msg)
     out_msg.image = dst;
     flow_image_pub_.publish(out_msg.toImageMsg());
 
-    // calculate velocity - using II.D from "On-board Velocity Estimation
-    // and Closed-loop Control of a Quadrotor UAV based   on Optical Flow"
-    // - Grabe et al. ICRA 2012
-    double current_time = msg->header.stamp.toSec();
-    double dt = current_time - prev_time;
-    prev_time = current_time;
-    Mat A, B;
-    static Mat R_b_to_c = (Mat_<double>(3,3) <<
-                               0,  1,  0,
-                              -1,  0,  0,
-                               0,  0,  1 );
-    // find average velocity of each point
-    double avg_x(0), avg_y(0);
-    for( int j = 0; j<points_[1].size(); j++){
-      // First convert to image coordinates
-      double xx = (points_[1][j].x - optical_center_.x)/focal_length_.x;
-      double xy = (points_[1][j].y - optical_center_.y)/focal_length_.y;
-      double prev_x = (points_[0][j].x - optical_center_.x)/focal_length_.x;
-      double prev_y = (points_[0][j].y - optical_center_.y)/focal_length_.y;
-      double vx = (xx - prev_x)/dt;
-      double vy = (xy - prev_y)/dt;
+    // Undistort Points using Camera Parameters
+    undistortPoints(points_[1], undistorted_points_[1], I_, D_);
+    unNormalize(undistorted_points_[1], Size(640,480), optical_center_);
 
-      // Second, De-rotate measurements (eq. 7)
-      Mat derotate = (Mat_<double>(2,3) <<
-                          -xx*xy, (1+xx*xx), -xy,
-                          -(1+xy*xy), xx*xy, xx);
-      Mat omega_b = (Mat_<double>(3,1) << p, q, r);
-      Mat rotated_velocity = derotate*R_b_to_c*omega_b;
-      double vx_prime = vx - rotated_velocity.at<double>(0);
-      double vy_prime = vy - rotated_velocity.at<double>(1);
+    // Calculate Essential Matrix
+    double focal = (focal_length_.x + focal_length_.y)/2.0;
+    Mat E = findEssentialMat(points_[0], points_[1], focal, optical_center_);
 
-      avg_x += vx;
-      avg_y += vy;
-
-//      cout << "point " << j << ": v: " << vx << ", " << vy << "\t rot_v:" << vx_prime << ", " << vy_prime<< "\t pt: " << prev_x << ", " << prev_y << " -> " << xx << ", " << xy << " \t dt: " << dt <<  endl;
-
-      // Then, Find v/d (eq. 9)
-      Mat x = (Mat_ <double>(3,1) << (double)points_[1][j].x, (double)points_[1][j].y, 1.0);
-      Mat u = (Mat_ <double>(3,1) << vx, vy, 0);
-      Mat a = skewSymmetric(x);
-      Mat b = skewSymmetric(x)*u/(N_c.t()*x);
-      A.push_back(a);
-      B.push_back(b);
-    }
-
-//    cout << "avg vel = " << avg_x/points_[1].size() << ", " << avg_y/points_[1].size() <<endl;
-//    cout << "ang vel = " << p << ", " << q << ", " << r << endl;
-    // Solve Least-Squares Approximation (eq. 11)
-    optical_flow_velocity_ = R_b_to_c.t()*(A.inv(DECOMP_SVD)*B*-pd);
-    cout << "vel meas = " << optical_flow_velocity_ << endl;
-//    cout << "N_c = " << N_c << endl;
+    Mat R, T;
+    recoverPose(E, points_[0], points_[1], R, T, focal, optical_center_);
+    cout << "R = \n" << R << endl;
+    cout << "T = \n" << T << endl;
 
 
     // get more corners to make up for lost corners
-    if(GFTT_params_.max_corners - points_[1].size() > 0){
-      vector<Point2f> new_points;
-      goodFeaturesToTrack(src, new_points, GFTT_params_.max_corners-points_[1].size(), 0.01, 10, Mat(), 3, 0, 0.04);
-      cornerSubPix(src, points_[1], Size(11,11), Size(-1,-1),
+   goodFeaturesToTrack(src, points_[1], GFTT_params_.max_corners, 0.01, 10, Mat(), 3, 0, 0.04);
+   cornerSubPix(src, points_[1], Size(11,11), Size(-1,-1),
           TermCriteria(TermCriteria::COUNT|TermCriteria::EPS,20,0.03));
-      for(int k = 0; k<new_points.size(); k++){
-        points_[1].push_back(new_points[k]);
-      }
-    }
-
+  }else{
+    cout << "empty" << endl;
   }
   // save off points for next loop
   std::swap(points_[1], points_[0]);
+  std::swap(undistorted_points_[1], undistorted_points_[0]);
   cv::swap(prev_src_, src);
 
   //Store the resulting measurement in the geometry_msgs::Vector3 velocity_measurement.
@@ -251,6 +222,13 @@ Mat monoVO::inertialToCamera(Mat v, double phi, double theta){
                    -1, 0,  0,
                    0,  0,  1 );
    return R_b_to_c*R_v2_to_b*R_v1_to_v2*v;
+}
+
+void monoVO::unNormalize(vector<Point2d> & points, Size size, Point2d center){
+  for(int i = 0; i<points.size(); i++){
+    points[i].x = center.x + points[i].x*size.width/2.0;
+    points[i].y = center.y + points[i].y*size.width/2.0;
+  }
 }
 
 } // namespace mono_vo

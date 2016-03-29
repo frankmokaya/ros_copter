@@ -75,11 +75,12 @@ private:
   nav_msgs::Odometry current_state_;
   geometry_msgs::Vector3 velocity_measurement_;
   Mat prev_src_, optical_flow_velocity_, N_;
-  vector<Point2f> points_[2];
+  vector<Point2d> points_[2], undistorted_points_[2];
   bool no_normal_estimate_;
 
   Point optical_center_;
   Point focal_length_;
+  Mat I_, D_;
 
   // Functions (feel free to add more helper functions if needed)
   void cameraCallback(const sensor_msgs::ImageConstPtr msg);
@@ -88,6 +89,7 @@ private:
 
   Mat skewSymmetric(Mat m);
   Mat inertialToCamera(Mat v, double phi, double theta);
+  void unNormalize(vector<Point2d> & points, Size size, Point2d center);
 };
 
 } // namespace ekf
