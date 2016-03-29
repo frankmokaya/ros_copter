@@ -34,11 +34,26 @@ monoVO::monoVO() :
   // Initialize Filters and other class variables
   optical_flow_velocity_ = (Mat_<double>(3,1) << 0, 0, 0);
 
-  optical_center_ = Point(320,240);
+  optical_center_ = Point(320.5,240.5);
   focal_length_ = Point(205.46963709898583,  205.46963709898583);
+
+  I_ = (Mat_ <double>(3,3) <<
+           205.46963709898583, 0.0000000000,   320.5,
+           0.0000000000,   205.46963709898583, 240.5,
+           0.0000000000,   0.0000000000,   1.0000000);
+  D_ = (Mat_ <double>(5,1) <<
+            0,
+            0,
+            0,
+            0,
+            0);
+
+  // Initialize Feature Matcher
+  detector_ = ORB::create();
+  detector_->setMaxFeatures(1000);
+  matcher_ = DescriptorMatcher::create("BruteForce-Hamming");
   return;
 }
-
 
 void monoVO::cameraCallback(const sensor_msgs::ImageConstPtr msg)
 {
@@ -56,74 +71,50 @@ void monoVO::cameraCallback(const sensor_msgs::ImageConstPtr msg)
   }
   Mat src = cv_ptr->image;
 
-  // Pull Out Current State
-  // Remember that when using Gazebo, current state will be in NWU,
-  // but when actually flying, it will be NED
-  double pd = current_state_.pose.pose.position.z;
-  double vel_x = current_state_.twist.twist.linear.x;
-  double vel_y = -1.0*current_state_.twist.twist.linear.y;
-  double phi = current_state_.pose.pose.orientation.x;
-  double theta = -1.0*current_state_.pose.pose.orientation.y;
-  double psi = -1.0*current_state_.pose.pose.orientation.z;
-  double p = current_state_.twist.twist.angular.x;
-  double q = -1.0*current_state_.twist.twist.angular.y;
-  double r = -1.0*current_state_.twist.twist.angular.z;
-
-  // Calculate Inertial Normal Vector
-  Mat N_inertial = (Mat_<double>(3,1) <<  0, 0, -1);
-  Mat N_c = inertialToCamera(N_inertial, phi, theta);
-
   // Initialize output Mat
   Mat dst;
+  cvtColor(src, dst, COLOR_GRAY2BGR);
 
   // points_[0] are the points from the previous frame
   // points_[1] are the points from the current frame
 
   if(initializing){
-    goodFeaturesToTrack(src, points_[1], GFTT_params_.max_corners, 0.01, 10, Mat(), 3, 0, 0.04);
-    cornerSubPix(src, points_[1], Size(11,11), Size(-1,-1),
-        TermCriteria(TermCriteria::COUNT|TermCriteria::EPS,20,0.03));
+    detector_->detectAndCompute(src, noArray(), keypoints_[1], descriptors_[1]);
+    cout << "initialized, kp size = " << (int)keypoints_[1].size() << endl;
     initializing = false;
-    prev_time = msg->header.stamp.toSec();
-  }else if(!points_[0].empty()){
-    vector<uchar> status;
-    vector<float> err;
-    if(prev_src_.empty()){
-      src.copyTo(prev_src_);
-    }
-    calcOpticalFlowPyrLK(prev_src_, src, points_[0], points_[1], status, err,
-        Size(31,31), 3, TermCriteria(TermCriteria::COUNT|TermCriteria::EPS,20,0.03),
-        0, 0.001);
-
-    vector<uchar> inliers;
-    Mat F = findFundamentalMat(points_[0], points_[1], inliers);
-
-    // Copy previous image onto the output in color.  Color is for plotting motion
-    cvtColor(prev_src_, dst, COLOR_GRAY2BGR);
-
-    // Go through points, and draw correspondences.  both points_ vectors will
-    // reduce in size, and only have points that found correspondences in both
-    // images we can use this to track points across multiple images in the future
-    int j, k;
-    for( j = k = 0; j < points_[1].size(); j++ ){
-      if( status[j] && inliers[j] ){
-        stringstream text;
-        text << k;
-        points_[0][k] = points_[0][j];
-        points_[1][k] = points_[1][j];
-//        stringstream ss;
-//        ss << j;
-//        putText(dst, ss.str().c_str(), points_[1][j], FONT_HERSHEY_COMPLEX, 1.0, Scalar(255,255,0));
-        circle( dst, points_[1][k], 2, Scalar(0,0,255), -1, 1);
-        circle( dst, points_[0][k], 1, Scalar(0,255,0), -1, 1);
-        //putText( dst, text.str().c_str(), points_[0][k], FONT_HERSHEY_PLAIN, 1.5, Scalar(255, 0, 255));
-        line(dst, points_[1][j], points_[0][j], Scalar(0,0,255));
-        k++;
+  }
+  else if(!keypoints_[0].empty()){
+    detector_->detectAndCompute(src, noArray(), keypoints_[1], descriptors_[1]);
+    vector<vector<DMatch>> matches;
+    matcher_->knnMatch(descriptors_[0], descriptors_[1], matches, 2);
+    matched_keypoints_[0].clear();
+    matched_keypoints_[1].clear();
+    for(int i = 0; i < matches.size(); i++)
+    {
+      if(matches[i][0].distance < nn_match_ratio_ * matches[i][1].distance) {
+        matched_keypoints_[0].push_back(keypoints_[0][matches[i][0].queryIdx]);
+        matched_keypoints_[1].push_back(keypoints_[1][matches[i][0].trainIdx]);
       }
     }
-    circle( dst, optical_center_, 5, Scalar(0,255,255), -1, 1);
-    points_[0].resize(k);
-    points_[1].resize(k);
+    // convert keypoints to point2d for findFundamentalMat
+    points_[0].clear();
+    points_[1].clear();
+    for(int i = 0; i<keypoints_[0].size(); i++){
+      points_[0].push_back(keypoints_[0][i].pt);
+      points_[1].push_back(keypoints_[1][i].pt);
+    }
+
+    vector<uchar> inliers;
+    Mat F = findFundamentalMat(points_[0], points_[1], inliers, FM_RANSAC, 3, 0.99);
+
+    for(int j = 0; j < points_[1].size(); j++ ){
+      if(!inliers[j]){
+      }else{
+        circle(dst, points_[1][j], 2, Scalar(0,0,255), -1, 1);
+        circle(dst, points_[0][j], 2, Scalar(0,255,0 -1, 1));
+        line(dst, points_[1][j], points_[0][j], Scalar(0,0,255));
+      }
+    }
 
     // publish the image
     cv_bridge::CvImage out_msg;
@@ -131,83 +122,14 @@ void monoVO::cameraCallback(const sensor_msgs::ImageConstPtr msg)
     out_msg.encoding = sensor_msgs::image_encodings::BGR8;
     out_msg.image = dst;
     flow_image_pub_.publish(out_msg.toImageMsg());
-
-    // calculate velocity - using II.D from "On-board Velocity Estimation
-    // and Closed-loop Control of a Quadrotor UAV based   on Optical Flow"
-    // - Grabe et al. ICRA 2012
-    double current_time = msg->header.stamp.toSec();
-    double dt = current_time - prev_time;
-    prev_time = current_time;
-    Mat A, B;
-    static Mat R_b_to_c = (Mat_<double>(3,3) <<
-                               0,  1,  0,
-                              -1,  0,  0,
-                               0,  0,  1 );
-    // find average velocity of each point
-    double avg_x(0), avg_y(0);
-    for( int j = 0; j<points_[1].size(); j++){
-      // First convert to image coordinates
-      double xx = (points_[1][j].x - optical_center_.x)/focal_length_.x;
-      double xy = (points_[1][j].y - optical_center_.y)/focal_length_.y;
-      double prev_x = (points_[0][j].x - optical_center_.x)/focal_length_.x;
-      double prev_y = (points_[0][j].y - optical_center_.y)/focal_length_.y;
-      double vx = (xx - prev_x)/dt;
-      double vy = (xy - prev_y)/dt;
-
-      // Second, De-rotate measurements (eq. 7)
-      Mat derotate = (Mat_<double>(2,3) <<
-                          -xx*xy, (1+xx*xx), -xy,
-                          -(1+xy*xy), xx*xy, xx);
-      Mat omega_b = (Mat_<double>(3,1) << p, q, r);
-      Mat rotated_velocity = derotate*R_b_to_c*omega_b;
-      double vx_prime = vx - rotated_velocity.at<double>(0);
-      double vy_prime = vy - rotated_velocity.at<double>(1);
-
-      avg_x += vx;
-      avg_y += vy;
-
-//      cout << "point " << j << ": v: " << vx << ", " << vy << "\t rot_v:" << vx_prime << ", " << vy_prime<< "\t pt: " << prev_x << ", " << prev_y << " -> " << xx << ", " << xy << " \t dt: " << dt <<  endl;
-
-      // Then, Find v/d (eq. 9)
-      Mat x = (Mat_ <double>(3,1) << (double)points_[1][j].x, (double)points_[1][j].y, 1.0);
-      Mat u = (Mat_ <double>(3,1) << vx, vy, 0);
-      Mat a = skewSymmetric(x);
-      Mat b = skewSymmetric(x)*u/(N_c.t()*x);
-      A.push_back(a);
-      B.push_back(b);
-    }
-
-//    cout << "avg vel = " << avg_x/points_[1].size() << ", " << avg_y/points_[1].size() <<endl;
-//    cout << "ang vel = " << p << ", " << q << ", " << r << endl;
-    // Solve Least-Squares Approximation (eq. 11)
-    optical_flow_velocity_ = R_b_to_c.t()*(A.inv(DECOMP_SVD)*B*-pd);
-    cout << "vel meas = " << optical_flow_velocity_ << endl;
-//    cout << "N_c = " << N_c << endl;
-
-
-    // get more corners to make up for lost corners
-    if(GFTT_params_.max_corners - points_[1].size() > 0){
-      vector<Point2f> new_points;
-      goodFeaturesToTrack(src, new_points, GFTT_params_.max_corners-points_[1].size(), 0.01, 10, Mat(), 3, 0, 0.04);
-      cornerSubPix(src, points_[1], Size(11,11), Size(-1,-1),
-          TermCriteria(TermCriteria::COUNT|TermCriteria::EPS,20,0.03));
-      for(int k = 0; k<new_points.size(); k++){
-        points_[1].push_back(new_points[k]);
-      }
-    }
-
+  }else{
+    cout << "empty" << endl;
   }
   // save off points for next loop
-  std::swap(points_[1], points_[0]);
+  std::swap(keypoints_[1], keypoints_[0]);
+  cv::swap(descriptors_[1], descriptors_[0]);
   cv::swap(prev_src_, src);
 
-  //Store the resulting measurement in the geometry_msgs::Vector3 velocity_measurement.
-  velocity_measurement_.x = optical_flow_velocity_.at<double>(0,0);
-  velocity_measurement_.y = optical_flow_velocity_.at<double>(1,0);
-  velocity_measurement_.z = optical_flow_velocity_.at<double>(2,0);
-
-  // publish the velocity measurement whenever you're finished processing
-  publishVelocity();
   return;
 }
 
@@ -251,6 +173,14 @@ Mat monoVO::inertialToCamera(Mat v, double phi, double theta){
                    -1, 0,  0,
                    0,  0,  1 );
    return R_b_to_c*R_v2_to_b*R_v1_to_v2*v;
+}
+
+
+void monoVO::unNormalize(vector<Point> & points, Size size, Point2d center){
+  for(int i = 0; i<points.size(); i++){
+    points[i].x = center.x + points[i].x*size.width/2.0;
+    points[i].y = center.y + points[i].y*size.width/2.0;
+  }
 }
 
 } // namespace mono_vo

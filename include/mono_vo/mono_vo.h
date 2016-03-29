@@ -8,12 +8,13 @@
 #include <sensor_msgs/Image.h>
 #include <geometry_msgs/Vector3.h>
 
-#include <cv_bridge/cv_bridge.h>
-#include <opencv2/highgui/highgui.hpp>
-#include <opencv2/imgproc/imgproc.hpp>
-#include <opencv2/videoio.hpp>
-#include <opencv2/features2d/features2d.hpp>
 #include <opencv2/opencv.hpp>
+#include <opencv2/imgproc/imgproc.hpp>
+#include <opencv2/opencv_modules.hpp>
+#include <opencv2/core/core.hpp>
+#include <opencv2/features2d.hpp>
+#include <opencv2/highgui/highgui.hpp>
+#include <cv_bridge/cv_bridge.h>
 #include <cmath>
 
 using namespace cv;
@@ -75,11 +76,18 @@ private:
   nav_msgs::Odometry current_state_;
   geometry_msgs::Vector3 velocity_measurement_;
   Mat prev_src_, optical_flow_velocity_, N_;
-  vector<Point2f> points_[2];
+  vector<Point2d> points_[2], undistort_points_[2];
+  vector<KeyPoint> keypoints_[2], matched_keypoints_[2];
+  Mat descriptors_[2];
   bool no_normal_estimate_;
+
+  const double nn_match_ratio_ = 0.8f; // Nearest-neighbour matching ratio
 
   Point optical_center_;
   Point focal_length_;
+  Mat I_, D_;
+  Ptr<ORB> detector_;
+  Ptr<DescriptorMatcher> matcher_;
 
   // Functions (feel free to add more helper functions if needed)
   void cameraCallback(const sensor_msgs::ImageConstPtr msg);
@@ -88,8 +96,11 @@ private:
 
   Mat skewSymmetric(Mat m);
   Mat inertialToCamera(Mat v, double phi, double theta);
+
+  void unNormalize(vector<Point> & points, Size size, Point2d center);
 };
 
 } // namespace ekf
 
 #endif // MONO_VO_H
+
