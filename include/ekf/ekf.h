@@ -54,6 +54,7 @@ private:
   // Publishers and Subscribers
   ros::Subscriber mocap_sub_;
   ros::Subscriber imu_sub_;
+  ros::Subscriber flow_sub_;
   ros::Publisher estimate_pub_;
   ros::Publisher bias_pub_;
   ros::Publisher is_flying_pub_;
@@ -88,10 +89,12 @@ private:
   // Functions
   void mocapCallback(const geometry_msgs::TransformStamped msg);
   void imuCallback(const sensor_msgs::Imu msg);
+  void flowCallback(const geometry_msgs::Vector3Stamped msg);
   void predictStep();
   void updateStep();
   void updateIMU(sensor_msgs::Imu msg);
   void updateMocap(geometry_msgs::TransformStamped msg);
+  void updateFlow(geometry_msgs::Vector3Stamped msg);
   void initializeX(geometry_msgs::TransformStamped msg);
   void predictTimerCallback(const ros::TimerEvent& event);
   void publishTimerCallback(const ros::TimerEvent& event);

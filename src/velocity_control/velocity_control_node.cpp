@@ -6,7 +6,7 @@ int main(int argc, char** argv)
   ros::init(argc, argv, "velocity_control");
   ros::NodeHandle nh;
 
-  velocity_control::monoVO Thing;
+  velocity_control::velocityControl Thing;
 
   ros::spin();
 

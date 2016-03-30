@@ -11,6 +11,7 @@ find_package(catkin REQUIRED COMPONENTS
   std_msgs
   fcu_common
   cv3_bridge
+  dynamic_reconfigure
 )
 find_package(Eigen REQUIRED)
 find_package(OpenCV REQUIRED)
@@ -27,6 +28,13 @@ generate_messages(
   DEPENDENCIES
   std_msgs
   geometry_msgs
+)
+
+# add dynamic reconfigure api
+#find_package(catkin REQUIRED dynamic_reconfigure)
+generate_dynamic_reconfigure_options(
+  cfg/gains.cfg
+  # more files
 )
 
 catkin_package(

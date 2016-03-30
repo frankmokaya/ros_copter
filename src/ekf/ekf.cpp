@@ -20,6 +20,7 @@ mocapFilter::mocapFilter() :
   // Setup publishers and subscribers
   imu_sub_ = nh_.subscribe("imu/data", 1, &mocapFilter::imuCallback, this);
   mocap_sub_ = nh_.subscribe("mocap", 1, &mocapFilter::mocapCallback, this);
+  flow_sub_ = nh_.subscribe("flow", 1, &mocapFilter::flowCallback, this);
   estimate_pub_ = nh_.advertise<nav_msgs::Odometry>("estimate", 1);
   bias_pub_ = nh_.advertise<sensor_msgs::Imu>("estimate/bias", 1);
   is_flying_pub_ = nh_.advertise<std_msgs::Bool>("is_flying", 1);
@@ -75,6 +76,13 @@ void mocapFilter::mocapCallback(const geometry_msgs::TransformStamped msg)
     updateMocap(msg);
   }
   return;
+}
+
+void mocapFilter::flowCallback(const geometry_msgs::Vector3Stamped msg)
+{
+  if(flying_){
+    updateFlow(msg);
+  }
 }
 
 void mocapFilter::initializeX(geometry_msgs::TransformStamped msg)
@@ -167,6 +175,16 @@ void mocapFilter::updateMocap(geometry_msgs::TransformStamped msg)
   L = P_*C.transpose()*(R_Mocap_ + C*P_*C.transpose()).inverse();
   P_ = (Eigen::MatrixXd::Identity(NUM_STATES,NUM_STATES) - L*C)*P_;
   x_hat_ = x_hat_ + L*(y - C*x_hat_);
+}
+
+
+void mocapFilter::updateFlow(geometry_msgs::Vector3Stamped msg)
+{
+  // transform Camera frame to body frame
+
+  // Define C
+
+  // Do update
 }
 
 
