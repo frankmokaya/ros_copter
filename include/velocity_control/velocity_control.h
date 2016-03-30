@@ -6,6 +6,7 @@
 
 #include <fcu_common/simple_pid.h>
 #include <fcu_common/MR_Controller_Commands.h>
+#include <fcu_common/Command.h>
 #include <nav_msgs/Odometry.h>
 #include <geometry_msgs/Vector3.h>
 #include <ros_copter/gainsConfig.h>
@@ -45,13 +46,13 @@ private:
   dynamic_reconfigure::Server<ros_copter::gainsConfig>::CallbackType func_;
 
   nav_msgs::Odometry current_state_;
-  geometry_msgs::Vector3 velocity_measurement_;
+  fcu_common::Command command_;
 
   double thrust_to_hover_bias_;
 
   // Functions
   void velocityCommandCallback(const fcu_common::MR_Controller_CommandsConstPtr &msg);
-  void estimateCallback(const nav_msgs::OdometryConstPtr& msg);
+  void estimateCallback(const nav_msgs::Odometry msg);
   void publishAttitudeCommand();
 
   void gainCallback(ros_copter::gainsConfig &config, uint32_t level);

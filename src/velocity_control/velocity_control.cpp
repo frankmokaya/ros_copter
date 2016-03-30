@@ -24,20 +24,21 @@ velocityControl::velocityControl() :
 }
 
 
-void velocityControl::velocityCommandCallback(const fcu_common::MR_Controller_Commands& msg)
+void velocityControl::velocityCommandCallback(const fcu_common::MR_Controller_CommandsConstPtr& msg)
 {
+
   return;
 }
 
-void velocityControl::estimateCallback(const nav_msgs::OdometryConstPtr& msg)
+void velocityControl::estimateCallback(const nav_msgs::Odometry msg)
 {
-  // Save off estimate for vision processing
+  current_state_ = msg;
   return;
 }
 
 void velocityControl::publishAttitudeCommand()
 {
-  velocity_pub_.publish(velocity_measurement_);
+
 }
 
 
