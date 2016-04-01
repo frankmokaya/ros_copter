@@ -6,7 +6,7 @@
 
 #include <nav_msgs/Odometry.h>
 #include <sensor_msgs/Image.h>
-#include <geometry_msgs/Vector3.h>
+#include <geometry_msgs/Vector3Stamped.h>
 
 #include <cv_bridge/cv_bridge.h>
 #include <opencv2/highgui/highgui.hpp>
@@ -14,6 +14,7 @@
 #include <opencv2/videoio.hpp>
 #include <opencv2/features2d/features2d.hpp>
 #include <opencv2/opencv.hpp>
+#include <cmath>
 
 using namespace cv;
 using namespace std;
@@ -38,17 +39,57 @@ private:
   ros::Subscriber camera_sub_;
   ros::Subscriber estimate_sub_;
   ros::Publisher velocity_pub_;
+  ros::Publisher flow_image_pub_;
 
-  // Parameters
-  Mat I_, D_; // intrinsic parameters for camera
+  // Parameters (Things we will want to tweak)
+  // put an underscore after class variables,
+  // local variables do not have underscores following them
+  // all variables are lowercase, (except acronyms) functions are camelCase (ROS standard)
+  // structs and classes are also camelCase
+  struct goodFeaturesToTrackParameters{
+    int max_corners;
+    double quality_level;
+    double min_dist;
+    int block_size;
+  }GFTT_params_;
 
+  struct calcOpticalFlowPyrLKParams{
+    int win_size;
+    int win_level;
+    int iters;
+    double accuracy;
+  }LK_params_;
+
+  struct findHomographyParams{
+    double rancsace_reproj_threshold;
+    int max_iters;
+    double confidence;
+  }FH_params_;
+
+  struct lineCircleParams{
+    int radius;
+    int thickness;
+  }LC_params_;
+  bool publish_image_;
+
+  // Class Variables (for memory between loops and functions)
   nav_msgs::Odometry current_state_;
-  geometry_msgs::Vector3 velocity_measurement_;
+  geometry_msgs::Vector3Stamped velocity_measurement_;
+  Mat prev_src_, optical_flow_velocity_, N_;
+  vector<Point2f> points_[2], undistort_points_[2];
+  bool no_normal_estimate_;
 
-  // Functions
+  Mat I_, D_;
+  Point optical_center_;
+  Point focal_length_;
+
+  // Functions (feel free to add more helper functions if needed)
   void cameraCallback(const sensor_msgs::ImageConstPtr msg);
   void estimateCallback(const nav_msgs::Odometry msg);
   void publishVelocity();
+
+  Mat skewSymmetric(Mat m);
+  Mat inertialToCamera(Mat v, double phi, double theta);
 };
 
 } // namespace ekf
