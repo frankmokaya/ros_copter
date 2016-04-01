@@ -95,7 +95,7 @@ void EKF::mocapCallback(const geometry_msgs::TransformStamped msg)
 void EKF::flowCallback(const geometry_msgs::Vector3Stamped msg)
 {
   if(flying_){
-    updateFLOW(msg);
+    updateFlow(msg);
   }
 }
 
@@ -192,7 +192,7 @@ void EKF::updateMocap(geometry_msgs::TransformStamped msg)
 }
 
 
-void EKF::updateFLOW(geometry_msgs::Vector3Stamped msg)
+void EKF::updateFlow(geometry_msgs::Vector3Stamped msg)
 {
 //  ROS_INFO("flow");
   double u(x_hat_(U)), v(x_hat_(V)), w(x_hat_(W));

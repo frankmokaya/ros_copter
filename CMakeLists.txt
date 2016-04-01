@@ -75,13 +75,13 @@ add_executable(mono_vo
 add_dependencies(mono_vo ros_copter_generate_messages_cpp fcu_io_generate_messages_cpp)
 target_link_libraries(mono_vo ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
 
-add_executable(velocity_control
-  src/velocity_control/velocity_control_node.cpp
-  src/velocity_control/velocity_control.cpp
-  include/velocity_control/velocity_control.h
+add_executable(controller
+  src/controller/controller_node.cpp
+  src/controller/controller.cpp
+  include/controller/controller.h
 )
-add_dependencies(velocity_control ros_copter_generate_messages_cpp fcu_io_generate_messages_cpp)
-target_link_libraries(velocity_control ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
+add_dependencies(controller ros_copter_generate_messages_cpp fcu_io_generate_messages_cpp)
+target_link_libraries(controller ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
 
 add_executable(rc_joy
   src/joy/rc_joy.cpp

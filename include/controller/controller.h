@@ -14,15 +14,15 @@
 
 using namespace std;
 
-namespace velocity_control
+namespace controller
 {
 
-class velocityControl
+class Controller
 {
 
 public:
 
-  velocityControl();
+  Controller();
 
 private:
 

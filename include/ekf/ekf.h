@@ -58,11 +58,8 @@ private:
   ros::Subscriber mocap_sub_;
   ros::Subscriber imu_sub_;
   ros::Subscriber flow_sub_;
-<<<<<<< HEAD
-=======
   ros::Subscriber alt_sub_;
 
->>>>>>> optical_flow_vo
   ros::Publisher estimate_pub_;
   ros::Publisher bias_pub_;
   ros::Publisher is_flying_pub_;
