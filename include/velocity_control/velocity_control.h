@@ -11,6 +11,9 @@
 #include <geometry_msgs/Vector3.h>
 #include <ros_copter/gainsConfig.h>
 #include <dynamic_reconfigure/server.h>
+#include <tf/tf.h>
+
+#define GRAVITY 9.80665
 
 using namespace std;
 
@@ -33,13 +36,15 @@ private:
   // Publishers and Subscribers
   ros::Subscriber camera_sub_;
   ros::Subscriber estimate_sub_;
-  ros::Publisher velocity_pub_;
+  ros::Publisher attitude_command_pub_;
+  geometry_msgs::Vector3 desired_acceleration_;
+  double desired_yaw_rate_;
 
   // PID Controllers
-  fcu_common::SimplePID roll_PID_;
-  fcu_common::SimplePID pitch_PID_;
+  fcu_common::SimplePID u_PID_;
+  fcu_common::SimplePID v_PID_;
   fcu_common::SimplePID yaw_PID_;
-  fcu_common::SimplePID thrust_PID_;
+  fcu_common::SimplePID z_PID_;
 
   // Dynamic Reconfigure Stuff
   dynamic_reconfigure::Server<ros_copter::gainsConfig> server_;
@@ -49,13 +54,16 @@ private:
   fcu_common::Command command_;
 
   double thrust_to_hover_bias_;
+  double mass_;
+  double max_roll_, max_pitch_, max_yaw_rate_;
 
   // Functions
   void velocityCommandCallback(const fcu_common::MR_Controller_CommandsConstPtr &msg);
   void estimateCallback(const nav_msgs::Odometry msg);
-  void publishAttitudeCommand();
 
   void gainCallback(ros_copter::gainsConfig &config, uint32_t level);
+  void mixOutput(geometry_msgs::Vector3 desired_acceleration, double desired_yaw_rate, fcu_common::Command & output_command);
+  double saturate(double x, double max, double min);
 };
 
 } // namespace ekf

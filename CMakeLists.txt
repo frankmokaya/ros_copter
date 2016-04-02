@@ -12,6 +12,7 @@ find_package(catkin REQUIRED COMPONENTS
   fcu_common
   cv3_bridge
   dynamic_reconfigure
+  tf
 )
 find_package(Eigen REQUIRED)
 find_package(OpenCV REQUIRED)
