@@ -1,12 +1,12 @@
 #include <ros/ros.h>
-#include "ekf/ekf.h"
+#include "controller/controller.h"
 
 int main(int argc, char** argv)
 {
-  ros::init(argc, argv, "ekf_node");
+  ros::init(argc, argv, "controller");
   ros::NodeHandle nh;
 
-  ekf::EKF Thing;
+  controller::Controller Thing;
 
   ros::spin();
 

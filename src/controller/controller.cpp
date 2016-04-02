@@ -1,9 +1,9 @@
-#include "velocity_control/velocity_control.h"
+#include "controller/controller.h"
 
-namespace velocity_control
+namespace controller
 {
 
-velocityControl::velocityControl() :
+Controller::Controller() :
   nh_(ros::NodeHandle()),
   nh_private_(ros::NodeHandle("~"))
 {
@@ -29,7 +29,7 @@ velocityControl::velocityControl() :
 }
 
 
-void velocityControl::velocityCommandCallback(const fcu_common::MR_Controller_CommandsConstPtr& msg)
+void Controller::velocityCommandCallback(const fcu_common::MR_Controller_CommandsConstPtr& msg)
 {
   // calculate the time
   static double prev_time(ros::Time::now().toSec());
@@ -74,16 +74,13 @@ void velocityControl::velocityCommandCallback(const fcu_common::MR_Controller_Co
   return;
 }
 
-
-void velocityControl::estimateCallback(const nav_msgs::Odometry msg)
+void Controller::estimateCallback(const nav_msgs::Odometry msg)
 {
   current_state_ = msg;
   return;
 }
 
-
-
-void velocityControl::mixOutput(geometry_msgs::Vector3 desired_acceleration, double desired_yaw_rate, fcu_common::Command & output_command){
+void Controller::mixOutput(geometry_msgs::Vector3 desired_acceleration, double desired_yaw_rate, fcu_common::Command & output_command){
   double thrust = mass_*sqrt(desired_acceleration.x*desired_acceleration.x
                              + desired_acceleration.y*desired_acceleration.y
                              + (desired_acceleration.z-GRAVITY)*(desired_acceleration.z-GRAVITY));
@@ -97,14 +94,12 @@ void velocityControl::mixOutput(geometry_msgs::Vector3 desired_acceleration, dou
 }
 
 
-void velocityControl::gainCallback(ros_copter::gainsConfig &config, uint32_t level)
+void Controller::gainCallback(ros_copter::gainsConfig &config, uint32_t level)
 {
   // Convert bool to double
   double xIntegrator = config.xIntegrator?1.0:0.0;
   double uIntegrator = config.uIntegrator?1.0:0.0;
 
-  ROS_INFO("New n(PID):   %0.4f,%0.4f,%0.4f", config.nP,xIntegrator*config.nI,config.nD);
-  ROS_INFO("New e(PID):   %0.4f,%0.4f,%0.4f", config.eP,xIntegrator*config.eI,config.eD);
   ROS_INFO("New d(PID):   %0.4f,%0.4f,%0.4f", config.dP,xIntegrator*config.dI,config.dD);
   ROS_INFO("New u(PID):   %0.4f,%0.4f,%0.4f", config.uP,uIntegrator*config.uI,config.uD);
   ROS_INFO("New v(PID):   %0.4f,%0.4f,%0.4f", config.vP,uIntegrator*config.vI,config.vD);
@@ -133,6 +128,3 @@ double velocityControl::saturate(double x, double max, double min){
 
 
 } // namespace ekf
-
-
-
