@@ -85,8 +85,8 @@ add_dependencies(controller ros_copter_generate_messages_cpp fcu_io_generate_mes
 target_link_libraries(controller ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
 
 add_executable(rc_joy
-  src/joy/rc_joy.cpp
-  include/rc_joy/rc_joy.h
+  src/teleop/rc_joy.cpp
+  include/teleop/rc_joy.h
 )
 add_dependencies(rc_joy ros_copter_generate_messages_cpp fcu_io_generate_messages_cpp)
 target_link_libraries(rc_joy ${catkin_LIBRARIES})

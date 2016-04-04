@@ -1,0 +1,10 @@
+velocity_controller: {
+    uP: 1.50, uI: 0.13, uD: 0.40,    uvtau: 0.15,
+    vP: 1.30, vI: 0.11, vD: 0.40,
+    nP: 1.00, nI: 0.0, nD: 0.40,    nedtau: 0.15,
+    eP: 1.00, eI: 0.0, eD: 0.40,
+    dP: 4.00, dI: 0.0, dD: 2.0,
+  yawP: 1.11, yawI: 0.31, yawD: 0.0, yawtau: 0.15,
+  xIntegrator: 1,
+  uIntegrator: 1
+}
