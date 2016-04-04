@@ -31,6 +31,8 @@ public:
 
 private:
 
+  VideoWriter video_;
+
   // Node handles, publishers, subscribers
   ros::NodeHandle nh_;
   ros::NodeHandle nh_private_;

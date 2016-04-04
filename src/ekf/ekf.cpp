@@ -36,21 +36,20 @@ EKF::EKF() :
   predict_timer_ = nh_.createTimer(ros::Duration(1.0/inner_loop_rate_), &EKF::predictTimerCallback, this);
   publish_timer_ = nh_.createTimer(ros::Duration(1.0/publish_rate_), &EKF::publishTimerCallback, this);
 
-  x_hat_.setZero();
   flying_ = false;
   return;
 }
 
 void EKF::publishTimerCallback(const ros::TimerEvent &event)
 {
-  publishEstimate();
+//  publishEstimate();
   return;
 }
 
 void EKF::predictTimerCallback(const ros::TimerEvent &event)
 {
   if(flying_){
-    predictStep();
+//    predictStep();
   }
   return;
 }
@@ -69,6 +68,8 @@ void EKF::imuCallback(const sensor_msgs::Imu msg)
     }
   }else{
     updateIMU(msg);
+    predictStep();
+    publishEstimate();
   }
   return;
 }
@@ -95,6 +96,7 @@ void EKF::mocapCallback(const geometry_msgs::TransformStamped msg)
 void EKF::flowCallback(const geometry_msgs::Vector3Stamped msg)
 {
   if(flying_){
+    cout << "flow" << endl;
     updateFlow(msg);
   }
 }
@@ -224,15 +226,17 @@ void EKF::updateFlow(geometry_msgs::Vector3Stamped msg)
   y = R_arm2body*vel_rot;
 
   Eigen::Matrix<double, 3, NUM_STATES> C = Eigen::Matrix<double, 3, NUM_STATES>::Zero();
-  C(0,U) = 1.0;
-  C(1,V) = 1.0;
+  C(0,U) = -1.0;
+  C(1,V) = -1.0;
   C(2,W) = 1.0;
 
   Eigen::Matrix<double, NUM_STATES, 3> L;
   L.setZero();
   L = P_*C.transpose()*(R_Flow_ + C*P_*C.transpose()).inverse();
   P_ = (Eigen::MatrixXd::Identity(NUM_STATES,NUM_STATES) - L*C)*P_;
+  cout << "x_hat_prev = " << x_hat_(U) << ", " << x_hat_(V);
   x_hat_ = x_hat_ + L*(y - C*x_hat_);
+  cout << " x_hat_new = " << x_hat_(U) << ", " << x_hat_(V) << endl;
 }
 
 
