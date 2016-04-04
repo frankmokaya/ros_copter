@@ -34,7 +34,7 @@ private:
   ros::NodeHandle nh_private_;
 
   // Publishers and Subscribers
-  ros::Subscriber camera_sub_;
+  ros::Subscriber velocity_sub_;
   ros::Subscriber estimate_sub_;
   ros::Publisher attitude_command_pub_;
   geometry_msgs::Vector3 desired_acceleration_;
@@ -63,7 +63,7 @@ private:
 
   void gainCallback(ros_copter::gainsConfig &config, uint32_t level);
   void mixOutput(geometry_msgs::Vector3 desired_acceleration, double desired_yaw_rate, fcu_common::Command & output_command);
-  double saturate(double x, double max, double min);
+  double saturate(double x, double min, double max);
 };
 
 } // namespace ekf

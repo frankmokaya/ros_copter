@@ -11,7 +11,7 @@ Controller::Controller() :
   nh_.param("mass", mass_, 0.519);
 
   // Setup publishers and subscribers
-  camera_sub_ = nh_.subscribe("/usb_cam/image_raw", 1, &Controller::velocityCommandCallback, this);
+  velocity_sub_ = nh_.subscribe("/velocity_command", 1, &Controller::velocityCommandCallback, this);
   estimate_sub_ = nh_.subscribe("estimate", 1, &Controller::estimateCallback, this);
   attitude_command_pub_ = nh_.advertise<fcu_common::Command>("command", 1);
 
@@ -114,7 +114,7 @@ void Controller::gainCallback(ros_copter::gainsConfig &config, uint32_t level)
 }
 
 
-double Controller::saturate(double x, double max, double min){
+double Controller::saturate(double x, double min, double max){
   if(max <= min){
     ROS_ERROR("saturate function min is greater than max");
   }

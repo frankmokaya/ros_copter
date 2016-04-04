@@ -6,15 +6,24 @@
                      parameter_filename: $(find ros_copter)/params/simulator.yaml}
 </rosparam>
 
+  <!--VO-->
+  <node name="mono_vo" pkg="ros_copter"  type="mono_vo" output="screen"/>
+
+  <!--Estimation-->
+  <node name="ekf" pkg="ros_copter"  type="ekf" output="screen">
+    <rosparam command="load" file="$(find ros_copter)/params/estimator.yaml" />
+    <!-- <remap from="mocap" to="/shredder/ground_truth/transform"/> -->
+  </node>
+
   <!-- Simulator -->
-  <include file="$(find relative_nav)/launch/sim.launch"/>
+  ros
 
   <!-- Estimator -->
-  <node name="ekf" pkg="ros_copter" type="ekf">
+  <!-- <node name="ekf" pkg="ros_copter" type="ekf">
     <remap from="mocap" to="shredder/ground_truth/transform"/>
     <remap from="imu/data" to="imu"/>
     <remap from="is_flying" to="bleh"/>
-  </node>
+  </node> -->
 
   <!-- Image Processing -->
   <node name="image_proc" pkg="image_proc" type="image_proc">

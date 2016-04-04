@@ -24,10 +24,10 @@ EKF::EKF() :
   ros_copter::importMatrixFromParamServer(nh_private_, TF_camera_to_body_, "TF_camera_to_body");
 
   // Setup publishers and subscribers
-  imu_sub_ = nh_.subscribe("imu", 1, &EKF::imuCallback, this);
+  imu_sub_ = nh_.subscribe("imu/data", 1, &EKF::imuCallback, this);
   mocap_sub_ = nh_.subscribe("mocap", 1, &EKF::mocapCallback, this);
   flow_sub_ = nh_.subscribe("flow", 1, &EKF::flowCallback, this);
-  alt_sub_ = nh_.subscribe("altimeter", 1, &EKF::altCallback, this);
+  alt_sub_ = nh_.subscribe("alt/data", 1, &EKF::altCallback, this);
 
   estimate_pub_ = nh_.advertise<nav_msgs::Odometry>("estimate", 1);
   bias_pub_ = nh_.advertise<sensor_msgs::Imu>("estimate/bias", 1);
