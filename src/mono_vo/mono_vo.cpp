@@ -38,7 +38,7 @@ monoVO::monoVO() :
   cout << "D = \n" << D_ << endl;
 
   // Setup publishers and subscribers
-  camera_sub_ = nh_.subscribe("image_mono", 1, &monoVO::cameraCallback, this);
+  camera_sub_ = nh_.subscribe("/camera/image_mono", 1, &monoVO::cameraCallback, this);
   estimate_sub_ = nh_.subscribe("estimate", 1, &monoVO::estimateCallback, this);
   velocity_pub_ = nh_.advertise<geometry_msgs::Vector3Stamped>("flow", 1);
   if(publish_image_){

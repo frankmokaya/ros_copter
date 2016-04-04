@@ -1,0 +1,58 @@
+<launch>
+
+ <!-- Set non-default parameters -->
+ <rosparam subst_value="True">
+  mono_vo:          { max_corners: 200,
+                      parameter_filename: $(find ros_copter)/params/camera.yaml}
+
+  teleop_joy:       { control_type: 1,
+                      max_u: 1.0,
+                      max_v: 1.2,
+                      max_yaw_rate: 2.0,
+                      max_dz: 0.005,
+                      command_topic: "velocity_command"}
+
+  xbox:             { autorepeat_rate: 50,
+                      deadzone: 0.12 }
+
+  FCU:              { imu_pub_rate: 250.0,
+                      rc_send_rate: 50.0,
+                      timeout: 1,
+                      enable_GPS: false,
+                      baudrate: 115200,
+                      get_imu_attitude: false,
+                      echo_rc_data: false }
+
+camera:             { width: 640,
+                      height: 480,
+                      video_mode: yuyv
+                      frame_rate: 30
+                      timestamp_method: start
+                      auto_white_balance: true }
+</rosparam>
+
+  <!--Teleop-->
+  <!-- <node name="xbox" pkg="joy" type="joy_node"/>
+  <node name="teleop_joy" pkg="ros_copter"  type="joy_teleop" output="screen"/> -->
+
+  <!-- Control -->
+  <!-- <node name="controller" pkg="ros_copter" type="controller" output="screen">
+    <rosparam command="load" file="$(find ros_copter)/params/gains.yaml"/>
+  </node> -->
+
+ <!-- Estimation -->
+  <node name="ekf" pkg="ros_copter"  type="ekf" output="screen">
+    <rosparam command="load" file="$(find ros_copter)/params/estimator.yaml" />
+    <remap from="mocap" to="/shredder/ground_truth/transform"/>
+  </node>
+
+  <!-- Vision -->
+  <node name="mono_vo" pkg="ros_copter" type="mono_vo" output="screen"/>
+
+  <!-- FCU -->
+  <node name="FCU" pkg="fcu_io" type="fcu_io_node" output="screen"/>
+
+  <!-- Camera -->
+  <node name="camera" pkg="libuvc_camera" type="camera_node"/>
+
+</launch>
