@@ -14,6 +14,9 @@
     <rosparam command="load" file="$(find ros_copter)/params/estimator.yaml" />
     <!-- <remap from="mocap" to="/shredder/ground_truth/transform"/> -->
   </node>
+
+  <!-- Control -->
+  <node name="controller" pkg="ros_copter" type="controller" output="screen"/>
   <!--
   <node name="record" pkg="rosbag" type="record" args="-O naze -a"/>
   <node name="play" pkg="rosbag" type="play" args="/home/iman/.ros/naze_balanced_props.bag -s 10 -u 35">

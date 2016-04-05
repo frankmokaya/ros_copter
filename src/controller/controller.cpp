@@ -11,8 +11,8 @@ Controller::Controller() :
   nh_.param("mass", mass_, 0.519);
 
   // Setup publishers and subscribers
-  camera_sub_ = nh_.subscribe("/usb_cam/image_raw", 1, &velocityControl::velocityCommandCallback, this);
-  estimate_sub_ = nh_.subscribe("estimate", 1, &velocityControl::estimateCallback, this);
+  velocity_sub_ = nh_.subscribe("/velocity_command", 1, &Controller::velocityCommandCallback, this);
+  estimate_sub_ = nh_.subscribe("estimate", 1, &Controller::estimateCallback, this);
   attitude_command_pub_ = nh_.advertise<fcu_common::Command>("command", 1);
 
   // intialize stuff
@@ -22,7 +22,7 @@ Controller::Controller() :
   desired_yaw_rate_ = 0.0;
 
   // connect dynamic reconfigure
-  func_ = boost::bind(&velocityControl::gainCallback, this, _1, _2);
+  func_ = boost::bind(&Controller::gainCallback, this, _1, _2);
   server_.setCallback(func_);
 
   return;
@@ -114,7 +114,7 @@ void Controller::gainCallback(ros_copter::gainsConfig &config, uint32_t level)
 }
 
 
-double velocityControl::saturate(double x, double max, double min){
+double Controller::saturate(double x, double min, double max){
   if(max <= min){
     ROS_ERROR("saturate function min is greater than max");
   }

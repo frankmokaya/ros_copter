@@ -38,7 +38,7 @@ monoVO::monoVO() :
   cout << "D = \n" << D_ << endl;
 
   // Setup publishers and subscribers
-  camera_sub_ = nh_.subscribe("image_mono", 1, &monoVO::cameraCallback, this);
+  camera_sub_ = nh_.subscribe("/camera/image_mono", 1, &monoVO::cameraCallback, this);
   estimate_sub_ = nh_.subscribe("estimate", 1, &monoVO::estimateCallback, this);
   velocity_pub_ = nh_.advertise<geometry_msgs::Vector3Stamped>("flow", 1);
   if(publish_image_){
@@ -47,6 +47,9 @@ monoVO::monoVO() :
 
   // Initialize Filters and other class variables
   optical_flow_velocity_ = (Mat_<double>(3,1) << 0, 0, 0);
+
+  int codec = CV_FOURCC('X','V','I','D');
+  video_.open("/home/iman/optical_flow.avi", codec, 30, Size(640, 480), true);
   return;
 }
 
@@ -180,7 +183,9 @@ void monoVO::cameraCallback(const sensor_msgs::ImageConstPtr msg)
     }
 
     // Solve Least-Squares Approximation (eq. 11)
-    optical_flow_velocity_ = R_b_to_c.t()*(A.inv(DECOMP_SVD)*B);
+    if(points_[1].size() > 8){
+      optical_flow_velocity_ = R_b_to_c.t()*(A.inv(DECOMP_SVD)*B);
+    }
 
     // get more corners to make up for lost corners
     if(points_[1].size() < .75*GFTT_params_.max_corners){
@@ -211,6 +216,9 @@ void monoVO::cameraCallback(const sensor_msgs::ImageConstPtr msg)
     out_msg.image = dst;
     flow_image_pub_.publish(out_msg.toImageMsg());
   }
+
+  //write to video for assignment
+  video_.write(dst);
 
   // publish the velocity measurement whenever you're finished processing
   publishVelocity();

@@ -2,8 +2,14 @@
 #define RC_JOY_H
 
 #include <fcu_common/Command.h>
+#include <fcu_common/MR_Controller_Commands.h>
 #include <ros/ros.h>
 #include <sensor_msgs/Joy.h>
+
+enum control_type{
+  ATTITUDE,
+  VELOCITY
+};
 
 struct Axes {
   int roll;
@@ -25,6 +31,13 @@ struct Buttons {
   Button fly;
 };
 
+struct Max {
+  double u;
+  double v;
+  double yaw_rate;
+  double dz;
+};
+
 namespace ros_copter{
 class RCJoy {
   typedef sensor_msgs::Joy::_buttons_type ButtonType;
@@ -41,12 +54,17 @@ private:
 
   bool fly_mav_;
 
-  fcu_common::Command command_msg_;
+  fcu_common::Command att_command_msg_;
+  fcu_common::MR_Controller_Commands vel_command_msg_;
   sensor_msgs::Joy current_joy_;
 
   Buttons buttons_;
 
   double thrust_to_mass_ratio_;
+
+  Max max_;
+
+  control_type control_type_;
 
   void StopMav();
 

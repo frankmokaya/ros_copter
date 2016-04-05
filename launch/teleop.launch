@@ -1,0 +1,58 @@
+<launch>
+  <arg name="mav_name"            default="hummingbird"/>
+  <arg name="world_file"          default="basic.world"/>
+
+ <!-- Set non-default parameters -->
+ <rosparam subst_value="True">
+  mono_vo:          { max_corners: 200,
+                      parameter_filename: $(find ros_copter)/params/camera.yaml}
+
+  teleop_joy:       { control_type: 1,
+                      max_u: 1.0,
+                      max_v: 1.2,
+                      max_yaw_rate: 2.0,
+                      max_dz: 0.005,
+                      command_topic: "velocity_command"}
+  xbox:             { autorepeat_rate: 50,
+                      deadzone: 0.12 }
+</rosparam>
+
+  <!--Teleop-->
+  <node name="xbox" pkg="joy" type="joy_node"/>
+  <node name="teleop_joy" pkg="ros_copter"  type="joy_teleop" output="screen"/>
+
+  <!-- Control -->
+  <node name="controller" pkg="ros_copter" type="controller" output="screen">
+    <rosparam command="load" file="$(find ros_copter)/params/gains.yaml"/>
+  </node>
+
+ <!-- Estimation -->
+  <node name="ekf" pkg="ros_copter"  type="ekf" output="screen">
+    <rosparam command="load" file="$(find ros_copter)/params/estimator.yaml" />
+    <remap from="mocap" to="/shredder/ground_truth/transform"/>
+  </node>
+
+  <!-- Attitude Control -->
+  <rosparam command="load" file="$(find attitude_controller)/param/$(arg mav_name).yaml"/>
+  <node name="attitude_controller" pkg="attitude_controller" type="attitude_controller_node">
+    <rosparam command="load" file="$(find fcu_sim)/param/$(arg mav_name).yaml"/>
+    <remap from="odometry" to="$(arg mav_name)/ground_truth/odometry"/>
+    <remap from="command/motor_speed" to="$(arg mav_name)/gazebo/command/motor_speed"/>
+  </node>
+
+  <include file="$(find gazebo_ros)/launch/empty_world.launch">
+    <arg name="world_name" value="$(find fcu_sim)/worlds/$(arg world_file)"/>
+    <arg name="paused" value="true"/>
+    <arg name="gui" value="true"/>
+  </include>
+
+  <!-- Spawn MAV -->
+  <include file="$(find fcu_sim)/launch/spawn_mav.launch">
+    <arg name="mav_name"            value="$(arg mav_name)" />
+    <arg name="model"               value="$(find fcu_sim)/urdf/$(arg mav_name)/$(arg mav_name)_base.xacro" />
+    <arg name="z" value="0.1"/>
+  </include>
+
+
+
+</launch>
