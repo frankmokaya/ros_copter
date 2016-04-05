@@ -180,12 +180,12 @@ void EKF::updateMocap(geometry_msgs::TransformStamped msg)
        -measurement.getOrigin().getZ(),
        roll, -pitch, -yaw;
   Eigen::Matrix<double, 6, NUM_STATES> C = Eigen::Matrix<double, 6, NUM_STATES>::Zero();
-  C(0,PN) = 0.0;
-  C(1,PE) = 0.0;
+  C(0,PN) = 1.0;
+  C(1,PE) = 1.0;
   C(2,PD) = 1.0;
-  C(3,PHI) = 0.0;
-  C(4,THETA) = 0.0;
-  C(5,PSI) = 0.0;
+  C(3,PHI) = 1.0;
+  C(4,THETA) = 1.0;
+  C(5,PSI) = 1.0;
   Eigen::Matrix<double, NUM_STATES, 6> L;
   L.setZero();
   L = P_*C.transpose()*(R_Mocap_ + C*P_*C.transpose()).inverse();
