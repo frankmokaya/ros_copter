@@ -310,15 +310,15 @@ Eigen::Matrix<double, NUM_STATES, NUM_STATES> EKF::dfdx(const Eigen::Matrix<doub
   A(PN,V) = sp*st*cs-cp*ss;
   A(PN,W) = cp*st*cs+sp*ss;
   A(PN,PHI) = (cp*st*cs+sp*ss)*v + (-sp*st*cs+cp*ss)*w;
-  A(PN,THETA) = -st*cs*u + (sp*ct*cs)*v + (cp*ct*ss)*w;
-  A(PN,PSI) = -ct*ss*u + (-sp*st*ss-cp*cs)*v + (-cp*st*ss+sp*cs)*w;
+  A(PN,THETA) = -st*cs*u + sp*ct*cs*v + cp*ct*cs*w;
+  A(PN,PSI) = -ct*ss*u - (sp*st*ss+cp*cs)*v + (sp*cs-cp*st*ss)*w;
 
-  A(PE,U) = cp*ss;
+  A(PE,U) = ct*cs;
   A(PE,V) = sp*st*ss+cp*cs;
   A(PE,W) = cp*st*ss-sp*cs;
-  A(PE,PHI) = (cp*st*ss-sp*cs)*v + (-sp*st*ss-cp*cs)*w;
-  A(PE,THETA) = -st*ss*u + (sp*ct*ss)*v + (cp*ct*ss)*w;
-  A(PE,PSI) = -ct*ss*u  + (sp*st*cs-cp*ss)*v + (cp*st*cs+sp*ss)*w;
+  A(PE,PHI) = (cp*st*ss-sp*cs)*v - (sp*st*ss+cp*cs)*w;
+  A(PE,THETA) = -st*cs*u + sp*ct*ss*v + cp*ct*ss*w;
+  A(PE,PSI) = -ct*ss*u  + (sp*st*cs-cp*ss)*v + (sp*ss+cp*st*cs)*w;
 
   A(PD,U) = -st;
   A(PD,V) = sp*ct;
@@ -347,7 +347,7 @@ Eigen::Matrix<double, NUM_STATES, NUM_STATES> EKF::dfdx(const Eigen::Matrix<doub
   A(W,BX) = -v;
   A(W,BY) = u;
 
-  A(PHI,PHI) = cp*tt*q - sp*tt*r;
+  A(PHI,PHI) = (cp*q - sp*r)*tt;
   A(PHI,THETA) = (sp*q + cp*r)/(ct*ct);
   A(PHI,BX) = 1;
   A(PHI,BY) = sp*tt;
