@@ -63,8 +63,8 @@ R_Flow: [0.00001, 0, 0, 0,
 
 R_Altimeter: [0.01],
 
-#TF_camera_to_body: [0.01, 0.08, 0.04, 0.0, 0.0, 0.785398], # Hummingbird Quad
-TF_camera_to_body: [0.00, 0.00, 0.2, 0.0, 0.0, 0.0],  # Shredder Sim
+TF_camera_to_body: [0.01, 0.08, 0.04, 0.0, 0.0, 2.35619449], # Hummingbird Quad
+# TF_camera_to_body: [0.00, 0.00, 0.2, 0.0, 0.0, 0.0],  # Shredder Sim
 
 inner_loop_rate: 200,
 alpha: 0.3
