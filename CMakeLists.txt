@@ -56,7 +56,7 @@ add_library(ros_copter
   include/lib/eigen.h
   src/lib/eigen.cpp
 )
-add_dependencies(ros_copter ros_copter_generate_messages_cpp fcu_io_generate_messages_cpp)
+add_dependencies(ros_copter ros_copter_generate_messages_cpp fcu_common_generate_messages_cpp)
 target_link_libraries(ros_copter ${catkin_LIBRARIES})
 
 add_executable(ekf
@@ -64,7 +64,7 @@ add_executable(ekf
   src/ekf/ekf.cpp
   include/ekf/ekf.h
 )
-add_dependencies(ekf ros_copter_generate_messages_cpp fcu_io_generate_messages_cpp)
+add_dependencies(ekf ros_copter_generate_messages_cpp fcu_common_generate_messages_cpp)
 target_link_libraries(ekf ${catkin_LIBRARIES})
 
 ## Declare cpp executables
@@ -73,7 +73,7 @@ add_executable(mono_vo
   src/mono_vo/mono_vo.cpp
   include/mono_vo/mono_vo.h
 )
-add_dependencies(mono_vo ros_copter_generate_messages_cpp fcu_io_generate_messages_cpp)
+add_dependencies(mono_vo ros_copter_generate_messages_cpp fcu_common_generate_messages_cpp)
 target_link_libraries(mono_vo ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
 
 add_executable(controller
@@ -81,12 +81,12 @@ add_executable(controller
   src/controller/controller.cpp
   include/controller/controller.h
 )
-add_dependencies(controller ros_copter_generate_messages_cpp fcu_io_generate_messages_cpp)
+add_dependencies(controller ros_copter_generate_messages_cpp fcu_common_generate_messages_cpp)
 target_link_libraries(controller ${catkin_LIBRARIES} ${OpenCV_LIBRARIES})
 
 add_executable(joy_teleop
   src/teleop/joy.cpp
   include/teleop/joy.h
 )
-add_dependencies(joy_teleop ros_copter_generate_messages_cpp fcu_io_generate_messages_cpp)
+add_dependencies(joy_teleop ros_copter_generate_messages_cpp fcu_common_generate_messages_cpp)
 target_link_libraries(joy_teleop ${catkin_LIBRARIES})
